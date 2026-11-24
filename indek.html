@@ -1,191 +1,76 @@
-<!doctype html>
-<html lang="hi">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>आधी रात की वेंडिंग मशीन</title>
-  <style>
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #101522;
-      font: 16px Arial, sans-serif;
-    }
-    #game { width: 100%; height: 100%; display: block; touch-action: none; }
-    #hud, #message {
-      position: fixed;
-      padding: 12px 16px;
-      color: white;
-      background: #101522e8;
-      border: 1px solid #ffffff35;
-      border-radius: 8px;
-      line-height: 1.6;
-    }
-    #hud { top: 14px; left: 14px; }
-    #message {
-      left: 50%; bottom: 24px; transform: translateX(-50%);
-      width: min(580px, calc(100% - 32px)); text-align: center;
-    }
-  </style>
-</head>
-<body>
-  <canvas id="game"></canvas>
-  <div id="hud">मिशन: वेंडिंग मशीन तक जाएँ</div>
-  <div id="message">आधी रात हो चुकी है। मशीन के पास जाएँ और E दबाएँ।</div>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@500;700&display=swap');
 
-  <script src="https://cdn.babylonjs.com/babylon.js"></script>
-  <script>
-    const canvas = document.getElementById("game");
-    const engine = new BABYLON.Engine(canvas, true);
-    const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0.025, 0.04, 0.09, 1);
+  * { box-sizing: border-box; }
 
-    const camera = new BABYLON.ArcRotateCamera(
-      "कैमरा", -Math.PI / 2, 1.05, 13, BABYLON.Vector3.Zero(), scene
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #03030b;
+    color: #dffaff;
+    font-family: 'Rajdhani', sans-serif;
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.18;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      #80ffff18 4px
     );
-    camera.attachControl(canvas, true);
-    camera.lowerRadiusLimit = 13;
-    camera.upperRadiusLimit = 13;
-    camera.inputs.removeByType("ArcRotateCameraPointersInput");
+  }
 
-    const light = new BABYLON.HemisphericLight(
-      "रोशनी", new BABYLON.Vector3(0, 1, 0), scene
-    );
-    light.intensity = 0.8;
+  #game {
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+  }
 
-    const ground = BABYLON.MeshBuilder.CreateGround(
-      "ज़मीन", { width: 24, height: 24 }, scene
-    );
-    const groundMat = new BABYLON.StandardMaterial("ज़मीन का रंग", scene);
-    groundMat.diffuseColor = new BABYLON.Color3(0.12, 0.16, 0.23);
-    ground.material = groundMat;
+  #hud, #message {
+    position: fixed;
+    z-index: 3;
+    color: #b9ffff;
+    background: linear-gradient(135deg, #071421dd, #160a26dd);
+    border: 1px solid #34eaffaa;
+    box-shadow: 0 0 18px #00d9ff55, inset 0 0 15px #8e00ff22;
+    clip-path: polygon(0 0, 95% 0, 100% 18%, 100% 100%, 5% 100%, 0 82%);
+    text-shadow: 0 0 8px #00faff;
+    line-height: 1.6;
+  }
 
-    function makeMat(name, color, glow = 0) {
-      const mat = new BABYLON.StandardMaterial(name, scene);
-      mat.diffuseColor = color;
-      mat.emissiveColor = color.scale(glow);
-      return mat;
-    }
+  #hud {
+    top: 16px;
+    left: 16px;
+    padding: 14px 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
 
-    const player = BABYLON.MeshBuilder.CreateBox(
-      "खिलाड़ी", { width: 0.8, height: 1.2, depth: 0.8 }, scene
-    );
-    player.position.y = 0.6;
-    player.material = makeMat("खिलाड़ी का रंग", new BABYLON.Color3(0.2, 0.55, 1), 0.15);
+  #message {
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(620px, calc(100% - 32px));
+    padding: 16px 20px;
+    text-align: center;
+    font-size: 19px;
+    font-weight: 700;
+    animation: pulse 2s infinite alternate;
+  }
 
-    const machine = BABYLON.MeshBuilder.CreateBox(
-      "मशीन", { width: 1.4, height: 2.5, depth: 1 }, scene
-    );
-    machine.position.set(0, 1.25, -4);
-    machine.material = makeMat("मशीन का रंग", new BABYLON.Color3(0.18, 0.65, 0.58), 0.15);
-
-    const machineWindow = BABYLON.MeshBuilder.CreateBox(
-      "मशीन की स्क्रीन", { width: 0.85, height: 1.15, depth: 0.05 }, scene
-    );
-    machineWindow.position.set(0, 1.55, -3.47);
-    machineWindow.material = makeMat("स्क्रीन का रंग", new BABYLON.Color3(0.4, 0.85, 1), 0.6);
-
-    const pigeon = BABYLON.MeshBuilder.CreateSphere(
-      "कबूतर", { diameter: 0.9 }, scene
-    );
-    pigeon.position.set(5, 0.5, 1);
-    pigeon.material = makeMat("कबूतर का रंग", new BABYLON.Color3(0.65, 0.68, 0.73));
-
-    const hat = BABYLON.MeshBuilder.CreateCylinder(
-      "टोपी", { diameter: 0.38, height: 0.22 }, scene
-    );
-    hat.position.set(5, 1.02, 1);
-    hat.material = makeMat("टोपी का रंग", new BABYLON.Color3(0.8, 0.2, 0.3));
-
-    const bus = BABYLON.MeshBuilder.CreateBox(
-      "बस", { width: 2.6, height: 1.4, depth: 1.3 }, scene
-    );
-    bus.position.set(-5, 0.7, 3);
-    bus.material = makeMat("बस का रंग", new BABYLON.Color3(0.85, 0.65, 0.18));
-
-    const keys = {};
-    let stage = 0;
-    let messageTimer = 0;
-
-    const hud = document.getElementById("hud");
-    const message = document.getElementById("message");
-
-    function say(text) {
-      message.textContent = text;
-      messageTimer = 5;
-    }
-
-    window.addEventListener("keydown", e => {
-      keys[e.key.toLowerCase()] = true;
-
-      if (e.key.toLowerCase() === "e") interact();
-    });
-
-    window.addEventListener("keyup", e => {
-      keys[e.key.toLowerCase()] = false;
-    });
-
-    function near(mesh, distance = 2) {
-      return BABYLON.Vector3.Distance(player.position, mesh.position) < distance;
-    }
-
-    function interact() {
-      if (stage === 0 && near(machine, 2.5)) {
-        stage = 1;
-        hud.textContent = "मिशन: कबूतर से बात करें";
-        say("मशीन से चीज़ क्रैकर्स का पैकेट गिरा। उसके नीचे एक पर्ची है: “चाँद के मुझ पर बारह डॉलर उधार हैं।”");
-      } else if (stage === 1 && near(pigeon, 2.5)) {
-        stage = 2;
-        hud.textContent = "मिशन: बस तक जाएँ";
-        say("कबूतर ने अपनी छोटी टोपी ठीक की और बोला: “बस आने वाली है। चाँद से पैसे वसूलने वही ले जाएगी।”");
-      } else if (stage === 2 && near(bus, 3)) {
-        stage = 3;
-        hud.textContent = "मिशन पूरा";
-        say("बस का दरवाज़ा खुला। ड्राइवर चाँद था। उसने पर्ची देखी, बारह डॉलर दिए और बिना कुछ कहे चला गया।");
-      } else if (!near(machine, 2.5) && !near(pigeon, 2.5) && !near(bus, 3)) {
-        say("यहाँ कुछ नहीं है। पास की चीज़ के करीब जाकर E दबाएँ।");
-      }
-    }
-
-    scene.onBeforeRenderObservable.add(() => {
-      const speed = 0.11;
-      let dx = 0, dz = 0;
-
-      if (keys["w"] || keys["arrowup"]) dz--;
-      if (keys["s"] || keys["arrowdown"]) dz++;
-      if (keys["a"] || keys["arrowleft"]) dx--;
-      if (keys["d"] || keys["arrowright"]) dx++;
-
-      if (dx || dz) {
-        const length = Math.hypot(dx, dz);
-        player.position.x += dx / length * speed;
-        player.position.z += dz / length * speed;
-      }
-
-      player.position.x = BABYLON.Scalar.Clamp(player.position.x, -10, 10);
-      player.position.z = BABYLON.Scalar.Clamp(player.position.z, -10, 10);
-      camera.target.x = player.position.x;
-      camera.target.z = player.position.z;
-
-      if (messageTimer > 0) {
-        messageTimer -= engine.getDeltaTime() / 1000;
-      } else if (stage === 0 && near(machine, 2.5)) {
-        message.textContent = "E दबाकर मशीन से बात करें";
-      } else if (stage === 1 && near(pigeon, 2.5)) {
-        message.textContent = "E दबाकर कबूतर से बात करें";
-      } else if (stage === 2 && near(bus, 3)) {
-        message.textContent = "E दबाकर बस में चढ़ें";
-      } else if (stage === 3) {
-        message.textContent = "खेल पूरा हुआ। रात अब थोड़ी कम अजीब लग रही है।";
-      } else {
-        message.textContent = "WASD से चलें। किसी चीज़ के पास जाकर E दबाएँ।";
-      }
-    });
-
-    engine.runRenderLoop(() => scene.render());
-    window.addEventListener("resize", () => engine.resize());
-  </script>
-</body>
-</html>
+  @keyframes pulse {
+    from { box-shadow: 0 0 12px #00d9ff44, inset 0 0 10px #8e00ff22; }
+    to   { box-shadow: 0 0 28px #00d9ffaa, inset 0 0 22px #8e00ff55; }
+  }
+</style>
